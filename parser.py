@@ -5,10 +5,13 @@ from bs4 import BeautifulSoup
 from datetime import datetime
 from multiprocessing import Pool, TimeoutError
 
-class Parser:
-    def __init__(self, url):
+class OwnParser:
+    all_links = []
+
+    def __init__(self, url, pools):
         self.url = url
-        self.all_links = self.get_all_links(self.get_html(str(self.url)+'/all/views/all/'));
+        self.pools = pools
+        self.get_all_links(self.get_html(str(self.url)+'/all/views/all/'));
         i = 1
         while (os.path.exists('data/prices'+str(i)+'.csv')):
             i+=1
@@ -19,7 +22,7 @@ class Parser:
 
         url = 'https://coinmarketcap.com';
 
-        with Pool(25) as p:
+        with Pool(self.pools) as p:
             p.map(self.all_do, self.all_links)
 
         end = datetime.now()
@@ -45,18 +48,16 @@ class Parser:
         links = []
 
         for tr in trs:
-            links.append({
+            self.all_links.append({
                 "link": self.url+tr.find('a', class_="currency-name-container").get('href'),
                 "position" : tr.find('td', class_="text-center").text.strip()
             })
-
-        return links
 
     def get_data_from_page(self, html):
         soup = BeautifulSoup(html, 'lxml')
 
         try:
-            name = soup.find('h1').text.strip()
+            name = soup.find('h1').text.strip().replace("\n", "")
         except Exception as e:
             name = ''
 
